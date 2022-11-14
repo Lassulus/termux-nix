@@ -1,0 +1,33 @@
+#!/bin/sh
+set -efux
+NIXDIR=$HOME/.nix
+
+mkdir -p $NIXDIR/nix
+mkdir -p $NIXDIR/etc/nix
+mkdir -p $NIXDIR/bin
+echo 'nameserver 8.8.8.8' > $NIXDIR/etc/resolv.conf
+echo 'sandbox = false' > $NIXDIR/etc/nix/nix.conf
+
+cat > $NIXDIR/bin/nix-proot << EOF
+#!/bin/sh
+set -efux
+unset LD_PRELOAD
+proot \
+  -b $NIXDIR/nix:/nix \
+  -b $NIXDIR/etc:/etc \
+  "\$@"
+EOF
+chmod +x $NIXDIR/bin/nix-proot
+
+cat > $NIXDIR/bin/enter-nix << EOF
+#!/bin/sh
+set -efux
+unset LD_PRELOAD
+proot \
+  -b $NIXDIR/nix:/nix \
+  -b $NIXDIR/etc:/etc \
+  bash --init-file \$HOME/.nix-profile/etc/profile.d/nix.sh "\$@"
+EOF
+chmod +x $NIXDIR/bin/enter-nix
+
+$NIXDIR/bin/nix-proot bash -c 'sh <(curl -L https://nixos.org/nix/install) --no-daemon'
